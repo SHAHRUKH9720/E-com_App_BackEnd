@@ -24,7 +24,7 @@ const signup = async(req,res,next)=>{
     try{
         const result = await AdminLoginRagisterSchema.validateAsync(req.body) ;
         const existingUser = await Admin.findOne({"email":result.email});
-        if(existingUser) throw creatError.Conflict(`user is already ragisterd with  ${email}`);
+        if(existingUser) throw creatError.Conflict(`user is already ragisterd with  ${result.email}`);
         const hashPasswod = await bcrypt.hash(result.password,10)
         await Admin.create({
             email:result.email,

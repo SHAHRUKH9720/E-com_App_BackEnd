@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-mongoose.connect('mongodb://localhost:27017',{dbName:'Shop_Now'})
+// mongoose.connect('mongodb://localhost:27017',{dbName:'Shop_Now'})
+mongoose.connect(process.env.MongoUrl)
 .then(() =>console.log('Mongodb Conneted with cloud from helper') )
 .catch((err)=>console.log('errMessage ',err.message));
 
