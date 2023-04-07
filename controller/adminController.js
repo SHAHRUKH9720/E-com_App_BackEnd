@@ -1,10 +1,12 @@
 const creatError = require('http-errors');
 const bcrypt = require('bcrypt');
 const Admin = require('../model/adminModel');
-const { AdminLoginRagisterSchema ,ForgotPasswordSchema, ResetPasswordSchema} = require('../helper/validator_Schema');
+const { AdminSignupSchema ,AdminSigninSchema,ForgotPasswordSchema, ResetAndChangePasswordSchema, updateAdminSchema, PrivacyPolicySchema} = require('../helper/validator_Schema');
 const jwt = require('jsonwebtoken')
 require('dotenv').config();
 const nodemailer = require('nodemailer');
+const joi = require('@hapi/joi');
+const Privacy_Policy = require('../model/privacy_policyModel');
 
 
  
@@ -22,43 +24,46 @@ const nodemailer = require('nodemailer');
 
 const signup = async(req,res,next)=>{
     try{
-        const result = await AdminLoginRagisterSchema.validateAsync(req.body) ;
+        const result = await AdminSignupSchema.validateAsync(req.body) ;
         const existingUser = await Admin.findOne({"email":result.email});
         if(existingUser) throw creatError.Conflict(`user is already ragisterd with  ${result.email}`);
         const hashPasswod = await bcrypt.hash(result.password,10)
-        await Admin.create({
+        let admin = {
             email:result.email,
             password:hashPasswod,
             name:req.body.name || 'NA',
             mobile:req.body.mobile || 'NA',
             role:req.body.role ||'NA',
-            country:req.body.country || 'NA'
-        })
+            country:req.body.country || 'NA',
+            status:req.body.status || "true"
+        }
+       let ADMIN =  await Admin.create(admin);
         res.status(200).json({
             code:200,
             message:"Ragistration Successful",
+            ADMIN
         })
     }catch(err){
+        if(err.isJoi==true) err.status = 400 
         next(err)
     }
 }
 
 const signin = async(req,res,next)=>{
     try{
-        const {email,password} = req.body;
-        const result = await AdminLoginRagisterSchema.validateAsync(req.body) ;
+        const result = await AdminSigninSchema.validateAsync(req.body) ;
         const existingUser = await Admin.findOne({email:result.email});
-        if(!existingUser) throw creatError.NotFound(`invalid credential`);
-        let matchPassword = await bcrypt.compare(password,existingUser.password)
-        if(!matchPassword) throw creatError.NotFound('invalid password')
+        if(!existingUser)  throw creatError.BadRequest(`invalid credential`);
+        let matchPassword = await bcrypt.compare(req.body.password,existingUser.password)
+        if(!matchPassword) throw creatError.BadRequest('invalid password')
         const token= jwt.sign({id:existingUser._id},process.env.SECRETKEY,{expiresIn:'1h'});
-        console.log(token)
         res.status(200).json({
             code:200,
             message:"login successfully",
             token
         })
     }catch(err){
+        if(err.isJoi==true) err.status = 400    
         next(err)
     }
 }
@@ -86,6 +91,7 @@ const forgotPassword = async(req,res,next)=>{
             }
           });
     }catch(err){
+        if(err.isJoi==true) err.status = 400  
         next(err)
     }
 }
@@ -93,15 +99,27 @@ const forgotPassword = async(req,res,next)=>{
 const resetPasswod = async(req,res,next)=>{
     try{
         const {token}= req.params;
-        const result = await ResetPasswordSchema.validateAsync(req.body) ;
-        const hashPasswod = await bcrypt.hash(result.password,10)
+        const result = await ResetAndChangePasswordSchema.validateAsync(req.body) ;
         const jwtResult = jwt.verify(token, `${process.env.SECRETKEY}`);
+        const hashPasswod = await bcrypt.hash(result.password,10)
         await Admin.findByIdAndUpdate(jwtResult.id,{$set:{password:hashPasswod}})
         res.status(200).json({
             code:200,
             message:"password updated successfully"
         })
 
+    }catch(err){
+        next(err)
+    }
+}
+
+
+const logout = async(req,res,next)=>{
+    try{
+        res.status(200).json({
+            code:200,
+            message:'logout successfully',
+        })
     }catch(err){
         next(err)
     }
@@ -116,7 +134,94 @@ const profile = async(req,res,next)=>{
             adminProfie
         })
     }catch(err){
+        next(err)
+    }
+}
+
+const adminListing = async(req,res,next)=>{
+    try{
+        let limitValue = Number(req.query.limit) ||10;
+        let pageNumber = Number(req.query.page)|| 1;
+        let skipValue = (pageNumber-1)*limitValue
+        let data = await Admin.find().skip(skipValue).limit(limitValue)
+        res.status(200).json({
+            code:200,
+            message:'success',
+            "data":{
+                limit:limitValue,
+                page:pageNumber,
+                totalCount:data.length,
+                result:data
+            }
+        })
+    }catch(err){
 
     }
 }
-module.exports= {signup,signin,forgotPassword,resetPasswod,profile}
+
+const updateAdmin = async(req,res,next)=>{
+    try{
+        const result = await updateAdminSchema.validateAsync(req.body) ;
+        const {_id} = req.params
+        const update_admin = await Admin.findByIdAndUpdate({_id},{$set:{
+            name:req.body.name,
+            email:req.body.email,
+            role:req.body.role,
+            mobile:req.body.mobile,
+            country:req.body.country
+        }},{
+            new:true,
+            useFindAndModify:false
+        });
+        res.status(200).json({
+            code:200,
+            message:"profile updated Successfully",
+            update_admin
+        })
+    }catch(err){
+        if(err.isJoi==true) err.status = 400 
+        next(err)
+    }
+}
+
+const changePassword = async(req,res,next)=>{
+    try{
+        const result = await ResetAndChangePasswordSchema.validateAsync(req.body) ;
+        const {_id}= req.params;
+        const hashPasswod = await bcrypt.hash(result.password,10)
+        await Admin.findByIdAndUpdate({_id},{$set:{password:hashPasswod}})
+        res.status(200).json({
+            code:200,
+            message:"password updated successfully"
+        })
+
+    }catch(err){
+        next(err)
+    }
+}
+
+const updatePrivacyPolicy = async(req,res,next)=>{
+    try{
+        const result = await PrivacyPolicySchema.validateAsync(req.body) ;
+        const privacy_policy = await Privacy_Policy.create({
+            privacy_policy:req.body.privacy_policy
+        })
+        res.status(200).json({
+            code:200,
+            message:"password updated successfully",
+            privacy_policy
+        })
+
+    }catch(err){
+        next(err)
+    }
+}
+
+
+
+module.exports= {
+    signup,signin,forgotPassword,
+    resetPasswod,logout,profile,
+    adminListing,updateAdmin,
+    changePassword,updatePrivacyPolicy
+}

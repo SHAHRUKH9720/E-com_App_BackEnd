@@ -11,12 +11,15 @@ const checkAdminAuth = async (req, res, next) => {
             req.user = await Admin.findById(adminInfo.id).select("-password")
             next()
         } catch (err) {
-            next(err)
+            next({
+                status: 401,
+                message: "Your token is expire.please login again"
+            })
         }
     }
     else {
-        res.status(400).json({
-            code: 400,
+        res.status(401).json({
+            status: 401,
             message: "unauthorized request"
         })
         next()

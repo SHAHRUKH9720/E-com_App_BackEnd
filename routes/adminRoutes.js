@@ -1,5 +1,5 @@
 const express = require('express');
-const { signup, signin, forgotPassword, resetPasswod, profile } = require('../controller/adminController');
+const { signup, signin, forgotPassword, resetPasswod, profile, adminListing, logout, updateAdmin, changePassword, updatePrivacyPolicy } = require('../controller/adminController');
 const checkAdminAuth = require('../middleWare/authMiddleware');
 const app = express();
 const adminRouter = express.Router();
@@ -11,7 +11,11 @@ adminRouter.post('/forgotPassword',forgotPassword);
 adminRouter.post('/resetPassword/:token',resetPasswod)
 
 //private route
-
+adminRouter.get('/logout',checkAdminAuth,logout)
 adminRouter.get('/profile',checkAdminAuth,profile)
+adminRouter.get('/admin_listing',checkAdminAuth,adminListing)
+adminRouter.post('/update_profile/:_id',checkAdminAuth,updateAdmin)
+adminRouter.post('/change_password/:_id',checkAdminAuth,changePassword)
+adminRouter.post('/privacy_policy/',checkAdminAuth,updatePrivacyPolicy)
 
 module.exports = adminRouter
