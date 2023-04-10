@@ -143,7 +143,32 @@ const adminListing = async(req,res,next)=>{
         let limitValue = Number(req.query.limit) ||10;
         let pageNumber = Number(req.query.page)|| 1;
         let skipValue = (pageNumber-1)*limitValue
-        let data = await Admin.find().skip(skipValue).limit(limitValue)
+        let data
+        if(req.query.name){
+             data = await Admin.find({
+                "$or":[
+                    {"name":{$regex:req.query.name,$options: "i"}}
+                ]
+            }).skip(skipValue).limit(limitValue)
+        }
+        else if(req.query.email){
+             data = await Admin.find({
+                "$or":[
+                    {"email":{$regex:req.query.email,$options: "i"}}
+                ]
+            }).skip(skipValue).limit(limitValue)
+        }
+        else if(req.query.email && req.query.email){
+             data = await Admin.find({
+                "$or":[
+                    {"name":{$regex:req.query.name,$options: "i"}},
+                    {"email":{$regex:req.query.email,$options: "i"}}
+                ]
+            }).skip(skipValue).limit(limitValue)
+        }
+        else {
+            data = await Admin.find().skip(skipValue).limit(limitValue)
+       }
         res.status(200).json({
             code:200,
             message:'success',
