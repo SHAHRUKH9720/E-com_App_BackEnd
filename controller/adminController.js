@@ -1,7 +1,7 @@
 const creatError = require('http-errors');
 const bcrypt = require('bcrypt');
 const Admin = require('../model/adminModel');
-const { AdminSignupSchema ,AdminSigninSchema,ForgotPasswordSchema, ResetAndChangePasswordSchema, updateAdminSchema, PrivacyPolicySchema} = require('../helper/validator_Schema');
+const { AdminSignupSchema ,AdminSigninSchema,ForgotPasswordSchema, ResetAndChangePasswordSchema, updateAdminSchema, PrivacyPolicySchema, statusAdminSchema} = require('../helper/validator_Schema');
 const jwt = require('jsonwebtoken')
 require('dotenv').config();
 const nodemailer = require('nodemailer');
@@ -144,27 +144,13 @@ const adminListing = async(req,res,next)=>{
         let pageNumber = Number(req.query.page)|| 1;
         let skipValue = (pageNumber-1)*limitValue
         let data
-        if(req.query.name){
-             data = await Admin.find({
-                "$or":[
-                    {"name":{$regex:req.query.name,$options: "i"}}
-                ]
-            }).skip(skipValue).limit(limitValue)
-        }
-        else if(req.query.email){
-             data = await Admin.find({
-                "$or":[
-                    {"email":{$regex:req.query.email,$options: "i"}}
-                ]
-            }).skip(skipValue).limit(limitValue)
-        }
-        else if(req.query.email && req.query.email){
-             data = await Admin.find({
-                "$or":[
-                    {"name":{$regex:req.query.name,$options: "i"}},
-                    {"email":{$regex:req.query.email,$options: "i"}}
-                ]
-            }).skip(skipValue).limit(limitValue)
+        if (req.query.search){
+            data = await Admin.find({
+                        "$or":[
+                            {"name":{$regex:req.query.search,$options: "i"}},
+                            {"email":{$regex:req.query.search,$options: "i"}}
+                        ]
+                    }).skip(skipValue).limit(limitValue)
         }
         else {
             data = await Admin.find().skip(skipValue).limit(limitValue)
@@ -201,6 +187,29 @@ const updateAdmin = async(req,res,next)=>{
         res.status(200).json({
             code:200,
             message:"profile updated Successfully",
+            update_admin
+        })
+    }catch(err){
+        if(err.isJoi==true) err.status = 400 
+        next(err)
+    }
+}
+
+const block_unblock_status = async(req,res,next)=>{
+    try{
+        const result = await statusAdminSchema.validateAsync(req.params) ;
+        const {_id,status} = req.params ;
+        if(!status)throw creatError.BadRequest(`status credential`);
+        const update_admin = await Admin.findByIdAndUpdate({_id},{$set:{
+            status:req.params.status,
+        
+        }},{
+            new:true,
+            useFindAndModify:false
+        });
+        res.status(200).json({
+            code:200,
+            message:"status updated Successfully",
             update_admin
         })
     }catch(err){
@@ -248,5 +257,6 @@ module.exports= {
     signup,signin,forgotPassword,
     resetPasswod,logout,profile,
     adminListing,updateAdmin,
-    changePassword,updatePrivacyPolicy
+    changePassword,updatePrivacyPolicy,
+    block_unblock_status
 }

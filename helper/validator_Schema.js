@@ -70,6 +70,10 @@ const updateAdminSchema = joi.object({
   status:joi.string()
   
 })
+const statusAdminSchema = joi.object({
+  _id:joi.string().required(),
+  status:joi.string().required()
+})
 
 const PrivacyPolicySchema = joi.object({
   privacy_policy:joi.string().required()
@@ -82,5 +86,6 @@ module.exports = {
     ForgotPasswordSchema,
     ResetAndChangePasswordSchema,
     updateAdminSchema,
-    PrivacyPolicySchema
+    PrivacyPolicySchema,
+    statusAdminSchema
 }
